@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x"] //include the correct binaryTargets so that Prisma can generate the appropriate binaries for both your local environment (Windows) and the Docker environment (Debian with OpenSSL 3.0.x).
+
+  //Prisma generates these binaries during the prisma generate process, and they are essential for Prisma Client to work correctly. These binaries handle database operations such as querying, migration, and data fetching.
+
+  //Since different operating systems (Windows, Linux, macOS) and platforms (e.g., x86, ARM) require different machine code, Prisma needs to generate platform-specific binaries to ensure that it can run correctly in the environment (e.g., your local machine or a Docker container). This is why you need to specify the binaryTargets in the schema.prisma file to generate the right binaries for both development and production environments.
+
+  //After updating the schema.prisma file, you need to regenerate the Prisma client so it includes the correct binaries
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model userinfo {
+  username          String              @id
+  email             String              @unique
+  password          String
+  usertype          String
+  profileImgURL     String?             @default("../../assets/user-img.png")
+  status            String              @default("Unverified")
+  job_post          job_post[]          @relation("job_Post")
+  // post_availability post_availability[] @relation("post_availability")
+  applications      applications[]      @relation("user_Applications")
+  labourinfo        labourinfo?         @relation("UserLabourInfo")
+
+  @@map("userinfo")
+}
+
+model labourinfo {
+  id          String   @id @default(uuid())
+  username    String   @unique
+  rating      Float    @default(0.0)
+  completions Int      @default(0)
+  userinfo    userinfo @relation("UserLabourInfo", fields: [username], references: [username], onDelete: Cascade)
+  post_availability post_availability[] @relation("post_availability")
+
+  @@map("labourinfo")
+}
+
+model job_post {
+  id             String         @id @default(uuid())
+  // joblogo        String
+  jobtitle       String
+  jobtype        String
+  jobdescription String
+  tasks          Json
+  salary         String
+  company        String
+  location       String
+  state          String
+  skills         String
+  // posttime       DateTime       @default(now())
+  posttime       String
+  user           String
+  postedby       userinfo       @relation("job_Post", fields: [user], references: [username], onDelete: Cascade)
+  applications   applications[] @relation("job_Applications")
+  status         String         @default("in progress")
+}
+
+model post_availability {
+  id            String   @id @default(uuid())
+  name          String
+  email         String
+  job           String
+  jobtype       String
+  min_pay       String
+  state         String
+  experienceYrs String
+  skills        String
+  posttime      DateTime @default(now())
+  postedby      labourinfo @relation("post_availability", fields: [user], references: [username], onDelete: Cascade)
+  user          String
+}
+
+model applications {
+  id            String   @id @default(uuid())
+  jobid         String
+  job           job_post @relation("job_Applications", fields: [jobid], references: [id], onDelete: Cascade)
+  applicant     String
+  appliedToUser String?
+  appliedby     userinfo @relation("user_Applications", fields: [applicant], references: [username], onDelete: Cascade)
+  approved      String   @default("pending")
+
+  @@unique([jobid, applicant])
+}
